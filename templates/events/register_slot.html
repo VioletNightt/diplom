@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Запись{% endblock %}
+{% block content %}
+<section class="form-layout">
+    <aside class="summary-panel">
+        <p class="eyebrow">Подтверждение</p>
+        <h1>{{ slot.event.title }}</h1>
+        <dl>
+            <dt>Дата и время</dt>
+            <dd>{{ slot.start_time|date:"d.m.Y H:i" }} - {{ slot.end_time|date:"H:i" }}</dd>
+            {% if slot.subject %}<dt>Предмет</dt><dd>{{ slot.subject }}</dd>{% endif %}
+            {% if slot.target_class %}<dt>Класс</dt><dd>{{ slot.target_class }}</dd>{% endif %}
+            <dt>Доступно классам</dt>
+            <dd>
+                {% if slot.available_classes.all %}
+                    {% for class_group in slot.available_classes.all %}{{ class_group.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                {% else %}
+                    Всем классам
+                {% endif %}
+            </dd>
+            {% if slot.teacher %}<dt>Учитель</dt><dd>{{ slot.teacher.user.full_name }}</dd>{% endif %}
+            {% if slot.classroom %}<dt>Кабинет</dt><dd>{{ slot.classroom }}</dd>{% endif %}
+            <dt>Свободно</dt>
+            <dd>{{ slot.free_places }} из {{ slot.max_participants }}</dd>
+        </dl>
+    </aside>
+    <form class="form-card" method="post">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        {% for field in form %}
+            <label>
+                <span>{{ field.label }}</span>
+                {{ field }}
+                {% if field.errors %}<small class="error">{{ field.errors|join:", " }}</small>{% endif %}
+            </label>
+        {% endfor %}
+        <button class="button wide" type="submit">Подтвердить запись</button>
+    </form>
+</section>
+{% endblock %}

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 190" role="img" aria-label="Пробный экзамен">
+  <rect width="320" height="190" rx="14" fill="#e8f2f7"/>
+  <rect x="46" y="34" width="148" height="122" rx="10" fill="#fff" stroke="#b9d2dd" stroke-width="3"/>
+  <path d="M74 68h90M74 92h72M74 116h84" stroke="#1d6f8f" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="232" cy="76" r="34" fill="#287d4f"/>
+  <path d="m215 76 11 12 24-28" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="214" y="118" width="62" height="18" rx="9" fill="#f3b34c"/>
+</svg>

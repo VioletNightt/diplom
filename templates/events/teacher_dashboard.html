@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Кабинет учителя{% endblock %}
+{% block content %}
+<section class="section-head">
+    <div>
+        <p class="eyebrow">Рабочий раздел</p>
+        <h1>{% if user.is_admin_role %}Все слоты{% else %}Кабинет учителя{% endif %}</h1>
+    </div>
+    <div class="toolbar-actions">
+        <a class="button secondary" href="{% url 'reports-export' %}?format=csv">CSV</a>
+        <a class="button secondary" href="{% url 'reports-export' %}?format=xlsx">Excel</a>
+        <a class="button secondary" href="{% url 'reports-statistics' %}?format=xlsx">Статистика</a>
+        {% if user.is_teacher_role %}
+            <a class="button" href="{% url 'teacher-slot-create' %}">Добавить слот</a>
+        {% endif %}
+    </div>
+</section>
+
+<div class="teacher-grid">
+    {% for slot in slots %}
+        <article class="teacher-slot">
+            <div class="teacher-slot-head">
+                <div>
+                    <h2>{{ slot.event.title }}</h2>
+                    <p class="muted">{{ slot.start_time|date:"d.m.Y H:i" }} - {{ slot.end_time|date:"H:i" }}</p>
+                    {% if slot.classroom %}<p class="muted">{{ slot.classroom }}</p>{% endif %}
+                    <p class="muted">
+                        Классы:
+                        {% if slot.available_classes.all %}
+                            {% for class_group in slot.available_classes.all %}{{ class_group.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                        {% else %}
+                            все
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="slot-actions">
+                    <span class="tag">{{ slot.current_participants }} / {{ slot.max_participants }}</span>
+                    <span class="tag">{{ slot.get_status_display }}</span>
+                    {% if slot.event.event_type == 'meeting' %}
+                    <a class="small link-small" href="{% url 'teacher-slot-edit' slot.id %}">Редактировать</a>
+                    {% endif %}
+                    {% if slot.event.event_type == 'meeting' and slot.status != 'canceled' %}
+                        <form method="post" action="{% url 'teacher-slot-cancel' slot.id %}">
+                            {% csrf_token %}
+                            <button class="small danger" type="submit">Отменить</button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="participants">
+                {% for registration in slot.registrations.all %}
+                    <div class="participant-row">
+                        <span>{{ registration.user.full_name }}</span>
+                        <span>{{ registration.get_status_display }}</span>
+                        <form method="post" action="{% url 'teacher-attendance' registration.id 'yes' %}">
+                            {% csrf_token %}
+                            <button class="small" type="submit">Был</button>
+                        </form>
+                        <form method="post" action="{% url 'teacher-attendance' registration.id 'no' %}">
+                            {% csrf_token %}
+                            <button class="small muted-button" type="submit">Не был</button>
+                        </form>
+                    </div>
+                {% empty %}
+                    <p class="muted">Записей пока нет.</p>
+                {% endfor %}
+            </div>
+        </article>
+    {% empty %}
+        <div class="empty">Слоты пока не созданы.</div>
+    {% endfor %}
+</div>
+{% endblock %}

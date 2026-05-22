@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 190" role="img" aria-label="Встреча с учителем">
+  <rect width="320" height="190" rx="14" fill="#fff3df"/>
+  <circle cx="106" cy="76" r="30" fill="#1d6f8f"/>
+  <path d="M54 154c8-34 30-52 52-52s44 18 52 52" fill="#fff" stroke="#1d6f8f" stroke-width="8"/>
+  <circle cx="220" cy="74" r="28" fill="#287d4f"/>
+  <path d="M174 154c7-31 26-48 46-48s39 17 46 48" fill="#fff" stroke="#287d4f" stroke-width="8"/>
+  <path d="M145 82h34" stroke="#f3b34c" stroke-width="10" stroke-linecap="round"/>
+</svg>

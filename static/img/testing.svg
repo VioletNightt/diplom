@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 190" role="img" aria-label="Входное тестирование">
+  <rect width="320" height="190" rx="14" fill="#eaf5ee"/>
+  <rect x="36" y="42" width="108" height="108" rx="12" fill="#fff" stroke="#badac8" stroke-width="3"/>
+  <text x="90" y="113" text-anchor="middle" font-family="Arial" font-size="54" font-weight="700" fill="#287d4f">9</text>
+  <rect x="176" y="42" width="108" height="108" rx="12" fill="#fff" stroke="#badac8" stroke-width="3"/>
+  <text x="230" y="113" text-anchor="middle" font-family="Arial" font-size="48" font-weight="700" fill="#1d6f8f">11</text>
+  <path d="M76 156h168" stroke="#f3b34c" stroke-width="12" stroke-linecap="round"/>
+</svg>

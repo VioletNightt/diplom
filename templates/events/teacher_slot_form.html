@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Новый слот{% endblock %}
+{% block content %}
+<section class="form-layout narrow">
+    <aside class="summary-panel">
+        <p class="eyebrow">Учитель</p>
+        <h1>{% if slot %}Редактирование встречи{% else %}Новый слот встречи{% endif %}</h1>
+        <p class="muted">Слот станет доступен пользователям в разделе встреч с учителями.</p>
+        <p class="muted">Если классы не выбраны, слот будет доступен всем.</p>
+    </aside>
+    <form class="form-card" method="post">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        {% for field in form %}
+            <label>
+                <span>{{ field.label }}</span>
+                {{ field }}
+                {% if field.errors %}<small class="error">{{ field.errors|join:", " }}</small>{% endif %}
+            </label>
+        {% endfor %}
+        <p class="capacity-hint" data-capacity-hint>Выберите кабинет, чтобы увидеть вместимость.</p>
+        <button class="button wide" type="submit">{% if slot %}Сохранить изменения{% else %}Создать слот{% endif %}</button>
+    </form>
+</section>
+{{ classrooms|json_script:"classrooms-data" }}
+<script>
+    (function () {
+        var classrooms = JSON.parse(document.getElementById('classrooms-data').textContent);
+        var capacityById = {};
+        classrooms.forEach(function (room) {
+            capacityById[String(room.id)] = room.capacity;
+        });
+
+        var classroomSelect = document.querySelector('[data-capacity-select]');
+        var maxInput = document.querySelector('[data-capacity-input]');
+        var hint = document.querySelector('[data-capacity-hint]');
+
+        function updateCapacity() {
+            if (!classroomSelect || !maxInput || !hint) {
+                return;
+            }
+            var capacity = capacityById[classroomSelect.value];
+            if (!capacity) {
+                maxInput.removeAttribute('max');
+                hint.textContent = 'Выберите кабинет, чтобы увидеть вместимость.';
+                return;
+            }
+            maxInput.max = capacity;
+            hint.textContent = 'Вместимость выбранного кабинета: ' + capacity + ' мест.';
+            if (Number(maxInput.value) > capacity) {
+                maxInput.value = capacity;
+            }
+        }
+
+        if (classroomSelect) {
+            classroomSelect.addEventListener('change', updateCapacity);
+            updateCapacity();
+        }
+    })();
+</script>
+{% endblock %}

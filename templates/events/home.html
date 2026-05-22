@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Главная{% endblock %}
+{% block content %}
+<section class="page-head">
+    <div>
+        <p class="eyebrow">Образовательное учреждение</p>
+        <h1>Выберите тип записи</h1>
+        <p class="lead">Система показывает доступные слоты, контролирует количество мест и сохраняет ваши записи в личном кабинете.</p>
+    </div>
+</section>
+
+<section class="action-grid">
+    <a class="choice-card exam" href="{% url 'event-type' 'exam' %}">
+        <img src="{% static 'img/exams.svg' %}" alt="" class="choice-image">
+        <span>
+            <strong>Пробные экзамены</strong>
+            <small>{{ counters.exam }} доступных слотов</small>
+        </span>
+    </a>
+    <a class="choice-card testing" href="{% url 'event-type' 'testing' %}">
+        <img src="{% static 'img/testing.svg' %}" alt="" class="choice-image">
+        <span>
+            <strong>Входное тестирование</strong>
+            <small>{{ counters.testing }} доступных слотов</small>
+        </span>
+    </a>
+    <a class="choice-card meeting" href="{% url 'event-type' 'meeting' %}">
+        <img src="{% static 'img/meeting.svg' %}" alt="" class="choice-image">
+        <span>
+            <strong>Встреча с учителем</strong>
+            <small>{{ counters.meeting }} доступных слотов</small>
+        </span>
+    </a>
+</section>
+{% endblock %}

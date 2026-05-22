@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}{{ event_type_label }}{% endblock %}
+{% block content %}
+<section class="section-head">
+    <div>
+        <p class="eyebrow">Доступные слоты</p>
+        <h1>{{ event_type_label }}</h1>
+    </div>
+    <form class="search" method="get">
+        <input name="q" value="{{ query }}" placeholder="Поиск по предмету, учителю, классу">
+        <button type="submit">Найти</button>
+    </form>
+</section>
+
+<div class="slot-list">
+    {% for slot in slots %}
+        <article class="slot-card">
+            <div>
+                <h2>{{ slot.event.title }}</h2>
+                <p class="muted">
+                    {{ slot.start_time|date:"d.m.Y H:i" }} - {{ slot.end_time|date:"H:i" }}
+                </p>
+                <p>
+                    {% if slot.subject %}<span class="tag">{{ slot.subject }}</span>{% endif %}
+                    {% if slot.target_class %}<span class="tag">Класс {{ slot.target_class }}</span>{% endif %}
+                    {% if slot.available_classes.all %}
+                        <span class="tag">Для: {% for class_group in slot.available_classes.all %}{{ class_group.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>
+                    {% else %}
+                        <span class="tag">Для всех классов</span>
+                    {% endif %}
+                    {% if slot.teacher %}<span class="tag">{{ slot.teacher.user.full_name }}</span>{% endif %}
+                    {% if slot.classroom %}<span class="tag">{{ slot.classroom }}</span>{% endif %}
+                    <span class="tag">{{ slot.get_status_display }}</span>
+                </p>
+            </div>
+            <div class="slot-side">
+                <strong>{{ slot.free_places }} / {{ slot.max_participants }}</strong>
+                <span>свободно</span>
+                {% if slot.is_available and not user.is_admin_role and not user.is_teacher_role %}
+                    <a class="button" href="{% url 'register-slot' slot.id %}">Записаться</a>
+                {% elif user.is_admin_role or user.is_teacher_role %}
+                    <button class="button disabled" disabled>Просмотр</button>
+                {% else %}
+                    <button class="button disabled" disabled>Недоступно</button>
+                {% endif %}
+            </div>
+        </article>
+    {% empty %}
+        <div class="empty">Сейчас нет доступных слотов по выбранному разделу.</div>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Регистрация{% endblock %}
+{% block content %}
+<section class="auth-card">
+    <h1>Регистрация</h1>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        {% for field in form %}
+            <label>
+                <span>{{ field.label }}</span>
+                {{ field }}
+                {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+                {% if field.errors %}<small class="error">{{ field.errors|join:", " }}</small>{% endif %}
+            </label>
+        {% endfor %}
+        <button class="button wide" type="submit">Создать аккаунт</button>
+    </form>
+</section>
+{% endblock %}

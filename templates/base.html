@@ -1,0 +1,50 @@
+{% load static %}
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Запись на мероприятия{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="{% url 'home' %}">Запись на мероприятия</a>
+        <nav class="nav">
+            {% if user.is_authenticated %}
+                {% if user.is_admin_role %}
+                    <a href="{% url 'admin:index' %}">Админка</a>
+                    <a href="{% url 'teacher-dashboard' %}">Все слоты</a>
+                {% elif user.is_teacher_role %}
+                    <a href="{% url 'teacher-dashboard' %}">Кабинет учителя</a>
+                {% else %}
+                    <a href="{% url 'event-type' 'exam' %}">Экзамены</a>
+                    <a href="{% url 'event-type' 'testing' %}">Тестирование</a>
+                    <a href="{% url 'event-type' 'meeting' %}">Учителя</a>
+                    <a href="{% url 'dashboard' %}">Мои записи</a>
+                {% endif %}
+                <form method="post" action="{% url 'logout' %}">
+                    {% csrf_token %}
+                    <button class="link-button" type="submit">Выйти</button>
+                </form>
+            {% else %}
+                <a href="{% url 'event-type' 'exam' %}">Экзамены</a>
+                <a href="{% url 'event-type' 'testing' %}">Тестирование</a>
+                <a href="{% url 'event-type' 'meeting' %}">Учителя</a>
+                <a href="{% url 'login' %}">Войти</a>
+                <a class="nav-pill" href="{% url 'register-page' %}">Регистрация</a>
+            {% endif %}
+        </nav>
+    </header>
+    <main class="shell">
+        {% if messages %}
+            <div class="messages">
+                {% for message in messages %}
+                    <div class="message {{ message.tags }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>
