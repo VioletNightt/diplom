@@ -9,7 +9,7 @@ from rest_framework.test import APIClient
 from accounts.models import User
 from notifications_app.models import Notification
 
-from .models import Classroom, Event, Registration, SchoolClass, Slot, TeacherProfile
+from .models import Classroom, Event, Registration, SchoolClass, SecuritySettings, Slot, TeacherProfile
 from .services import RegistrationError, cancel_registration, create_registration
 
 
@@ -269,18 +269,55 @@ class FrontendTests(TestCase):
 
     def test_user_can_register_from_frontend(self):
         self.client.login(username='parent@example.com', password='password123')
-        response = self.client.post(
-            f'/slots/{self.slot.id}/register/',
-            {
-                'student_full_name': 'Петров Петр',
-                'parent_full_name': 'Петров Алексей',
-                'parent_phone': '+79995551010',
-            },
-            follow=True,
-        )
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(
+                f'/slots/{self.slot.id}/register/',
+                {
+                    'student_full_name': 'Петров Петр',
+                    'parent_full_name': 'Петров Алексей',
+                    'parent_phone': '+79995551010',
+                },
+                follow=True,
+            )
         self.assertContains(response, 'Запись успешно создана')
         self.assertEqual(Registration.objects.filter(user=self.user, slot=self.slot).count(), 1)
         self.assertTrue(Notification.objects.filter(user=self.user, type=Notification.Type.CONFIRMATION).exists())
+
+    def test_guest_registration_redirects_to_login_when_disabled(self):
+        settings_obj = SecuritySettings.load()
+        settings_obj.allow_guest_students = False
+        settings_obj.save(update_fields=['allow_guest_students'])
+
+        response = self.client.get(f'/slots/{self.slot.id}/register/')
+        self.assertRedirects(response, '/login/')
+
+    def test_guest_can_register_when_security_setting_enabled(self):
+        school_class = SchoolClass.objects.create(name='9А')
+        self.slot.available_classes.set([school_class])
+        SecuritySettings.load().save()
+        settings_obj = SecuritySettings.load()
+        settings_obj.allow_guest_students = True
+        settings_obj.save(update_fields=['allow_guest_students'])
+
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(
+                f'/slots/{self.slot.id}/register/',
+                {
+                    'guest_full_name': 'Петров Петр',
+                    'guest_email': 'guest@example.com',
+                    'guest_school_class': school_class.id,
+                    'student_full_name': 'Петров Петр',
+                    'parent_full_name': 'Петров Алексей',
+                    'parent_phone': '+79995551010',
+                },
+                follow=True,
+            )
+
+        self.assertContains(response, 'Запись успешно создана')
+        registration = Registration.objects.get(slot=self.slot, guest_email='guest@example.com')
+        self.assertIsNone(registration.user)
+        self.assertEqual(registration.guest_school_class, school_class)
+        self.assertTrue(Notification.objects.filter(user__isnull=True, registration=registration).exists())
 
     def test_teacher_can_edit_meeting_and_notify_participants(self):
         teacher_user = User.objects.create_user(

@@ -15,7 +15,7 @@ class ReportExportView(APIView):
 
     def get_queryset(self):
         user = self.request.user
-        queryset = Registration.objects.select_related('user', 'slot', 'slot__event', 'slot__teacher', 'slot__teacher__user', 'slot__classroom')
+        queryset = Registration.objects.select_related('user', 'user__school_class', 'guest_school_class', 'slot', 'slot__event', 'slot__teacher', 'slot__teacher__user', 'slot__classroom')
         if user.is_teacher_role and not user.is_admin_role:
             queryset = queryset.filter(slot__teacher=getattr(user, 'teacher_profile', None))
         event_type = self.request.query_params.get('event_type')
@@ -48,11 +48,13 @@ class ReportExportView(APIView):
         slot = registration.slot
         teacher_name = slot.teacher.user.full_name if slot.teacher_id else ''
         classroom = str(slot.classroom) if slot.classroom_id else ''
+        school_class = registration.participant_school_class
         return [
             registration.id,
-            registration.user.full_name,
-            registration.user.email,
-            registration.user.phone,
+            registration.participant_full_name,
+            registration.participant_email,
+            registration.participant_phone,
+            str(school_class) if school_class else '',
             slot.event.title,
             slot.event.get_event_type_display(),
             slot.subject,
@@ -71,6 +73,7 @@ class ReportExportView(APIView):
             'ФИО',
             'Email',
             'Телефон',
+            'Класс школьника',
             'Мероприятие',
             'Тип',
             'Предмет',

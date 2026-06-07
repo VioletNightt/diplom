@@ -9,7 +9,6 @@
     <div class="toolbar-actions">
         <a class="button secondary" href="{% url 'reports-export' %}?format=csv">CSV</a>
         <a class="button secondary" href="{% url 'reports-export' %}?format=xlsx">Excel</a>
-        <a class="button secondary" href="{% url 'reports-statistics' %}?format=xlsx">Статистика</a>
         {% if user.is_teacher_role %}
             <a class="button" href="{% url 'teacher-slot-create' %}">Добавить слот</a>
         {% endif %}
@@ -50,7 +49,7 @@
             <div class="participants">
                 {% for registration in slot.registrations.all %}
                     <div class="participant-row">
-                        <span>{{ registration.user.full_name }}</span>
+                        <span>{{ registration.participant_full_name }}</span>
                         <span>{{ registration.get_status_display }}</span>
                         <form method="post" action="{% url 'teacher-attendance' registration.id 'yes' %}">
                             {% csrf_token %}

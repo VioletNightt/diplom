@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import Classroom, Event, Slot
+from .models import Classroom, Event, SchoolClass, Slot
 
 
 class TestingRegistrationForm(forms.Form):
@@ -11,6 +11,28 @@ class TestingRegistrationForm(forms.Form):
 
 class EmptyRegistrationForm(forms.Form):
     confirm = forms.BooleanField(label='Подтверждаю запись', required=True)
+
+
+class GuestRegistrationFieldsForm(forms.Form):
+    guest_full_name = forms.CharField(label='ФИО школьника', max_length=255)
+    guest_email = forms.EmailField(label='Email')
+    guest_school_class = forms.ModelChoiceField(
+        label='Класс',
+        queryset=SchoolClass.objects.none(),
+        empty_label=None,
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['guest_school_class'].queryset = SchoolClass.objects.filter(is_active=True).order_by('name')
+
+
+class GuestEmptyRegistrationForm(GuestRegistrationFieldsForm, EmptyRegistrationForm):
+    pass
+
+
+class GuestTestingRegistrationForm(GuestRegistrationFieldsForm, TestingRegistrationForm):
+    pass
 
 
 class TeacherSlotForm(forms.ModelForm):

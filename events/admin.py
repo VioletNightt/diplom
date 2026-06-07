@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils import timezone
 
-from .models import Classroom, Event, Registration, SchoolClass, Slot, TeacherProfile
+from .models import Classroom, Event, Registration, SchoolClass, SecuritySettings, Slot, TeacherProfile
 from .services import cancel_registration, mark_attendance
 
 
@@ -31,6 +31,18 @@ class SchoolClassAdmin(admin.ModelAdmin):
     list_filter = ['is_active']
     search_fields = ['name']
     ordering = ['name']
+
+
+@admin.register(SecuritySettings)
+class SecuritySettingsAdmin(admin.ModelAdmin):
+    list_display = ['allow_guest_students', 'updated_at']
+    readonly_fields = ['updated_at']
+
+    def has_add_permission(self, request):
+        return not SecuritySettings.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 class SlotInline(admin.TabularInline):
@@ -94,9 +106,9 @@ def cancel_selected(modeladmin, request, queryset):
 
 @admin.register(Registration)
 class RegistrationAdmin(admin.ModelAdmin):
-    list_display = ['user', 'slot', 'status', 'registered_at', 'attended_at']
-    list_filter = ['status', 'slot__event__event_type', 'slot__start_time']
-    search_fields = ['user__full_name', 'user__email', 'user__phone', 'slot__event__title']
+    list_display = ['participant_name', 'participant_email', 'slot', 'status', 'registered_at', 'attended_at']
+    list_filter = ['status', 'slot__event__event_type', 'slot__start_time', 'guest_school_class']
+    search_fields = ['user__full_name', 'user__email', 'user__phone', 'guest_full_name', 'guest_email', 'slot__event__title']
     readonly_fields = ['registered_at', 'attended_at']
     date_hierarchy = 'registered_at'
     actions = [mark_attended, mark_no_show, cancel_selected]
@@ -105,5 +117,13 @@ class RegistrationAdmin(admin.ModelAdmin):
         if obj.status == Registration.Status.ATTENDED and not obj.attended_at:
             obj.attended_at = timezone.now()
         super().save_model(request, obj, form, change)
+
+    @admin.display(description='Участник')
+    def participant_name(self, obj):
+        return obj.participant_full_name
+
+    @admin.display(description='Email')
+    def participant_email(self, obj):
+        return obj.participant_email
 
 # Register your models here.

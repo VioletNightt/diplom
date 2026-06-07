@@ -1,7 +1,7 @@
 from django.http import HttpResponse
 from rest_framework import decorators, exceptions, generics, permissions, response, status, viewsets
 
-from .models import Classroom, Event, Registration, SchoolClass, Slot, TeacherProfile
+from .models import Classroom, Event, Registration, SchoolClass, SecuritySettings, Slot, TeacherProfile
 from .permissions import IsAdminOrReadOnly
 from .serializers import (
     AttendanceSerializer,
@@ -112,9 +112,16 @@ class SlotViewSet(viewsets.ModelViewSet):
 class RegistrationViewSet(viewsets.ModelViewSet):
     serializer_class = RegistrationSerializer
 
+    def get_permissions(self):
+        if self.action == 'create' and SecuritySettings.guest_students_allowed():
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated()]
+
     def get_queryset(self):
         queryset = Registration.objects.select_related('slot', 'slot__event', 'slot__teacher', 'slot__teacher__user', 'user')
         user = self.request.user
+        if not user.is_authenticated:
+            return queryset.none()
         if user.is_admin_role:
             return queryset
         if user.is_teacher_role:
@@ -127,9 +134,12 @@ class RegistrationViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         try:
             registration = create_registration(
-                user=request.user,
+                user=request.user if request.user.is_authenticated else None,
                 slot_id=serializer.validated_data['slot'],
                 registration_data=serializer.validated_data.get('registration_data', {}),
+                guest_full_name=serializer.validated_data.get('guest_full_name', ''),
+                guest_email=serializer.validated_data.get('guest_email', ''),
+                guest_school_class=serializer.validated_data.get('guest_school_class'),
             )
         except RegistrationError as exc:
             return response.Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)

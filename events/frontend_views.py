@@ -4,8 +4,8 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from .forms import EmptyRegistrationForm, TeacherSlotForm, TestingRegistrationForm
-from .models import Classroom, Event, Registration, Slot, TeacherProfile
+from .forms import EmptyRegistrationForm, GuestEmptyRegistrationForm, GuestTestingRegistrationForm, TeacherSlotForm, TestingRegistrationForm
+from .models import Classroom, Event, Registration, SecuritySettings, Slot, TeacherProfile
 from .services import RegistrationError, cancel_registration, create_registration, mark_attendance, notify_slot_change
 
 
@@ -59,27 +59,48 @@ def event_type_page(request, event_type):
     )
 
 
-@login_required
 def register_slot_page(request, slot_id):
-    if request.user.is_admin_role or request.user.is_teacher_role:
+    if not request.user.is_authenticated and not SecuritySettings.guest_students_allowed():
+        messages.error(request, 'Запись без регистрации сейчас отключена. Войдите или зарегистрируйтесь.')
+        return redirect('login')
+    if request.user.is_authenticated and (request.user.is_admin_role or request.user.is_teacher_role):
         messages.error(request, 'Запись доступна только пользователям/родителям.')
         return redirect('teacher-dashboard' if request.user.is_teacher_role else 'admin:index')
     slot = get_object_or_404(
         Slot.objects.select_related('event', 'teacher', 'teacher__user', 'classroom').prefetch_related('available_classes'),
         pk=slot_id,
     )
-    if slot.available_classes.exists() and request.user.school_class not in slot.available_classes.all():
+    if request.user.is_authenticated and slot.available_classes.exists() and request.user.school_class not in slot.available_classes.all():
         messages.error(request, 'Этот слот недоступен для вашего класса.')
         return redirect('event-type', event_type=slot.event.event_type)
-    form_class = TestingRegistrationForm if slot.event.event_type == Event.EventType.TESTING else EmptyRegistrationForm
+    if request.user.is_authenticated:
+        form_class = TestingRegistrationForm if slot.event.event_type == Event.EventType.TESTING else EmptyRegistrationForm
+    else:
+        form_class = GuestTestingRegistrationForm if slot.event.event_type == Event.EventType.TESTING else GuestEmptyRegistrationForm
     form = form_class(request.POST or None)
     if request.method == 'POST' and form.is_valid():
         data = form.cleaned_data.copy()
         data.pop('confirm', None)
+        guest_kwargs = {}
+        if not request.user.is_authenticated:
+            guest_school_class = data.pop('guest_school_class')
+            if slot.available_classes.exists() and guest_school_class not in slot.available_classes.all():
+                messages.error(request, 'Этот слот недоступен для выбранного класса.')
+                return redirect('event-type', event_type=slot.event.event_type)
+            guest_kwargs = {
+                'guest_full_name': data.pop('guest_full_name'),
+                'guest_email': data.pop('guest_email'),
+                'guest_school_class': guest_school_class,
+            }
         try:
-            create_registration(user=request.user, slot_id=slot.id, registration_data=data)
+            create_registration(
+                user=request.user if request.user.is_authenticated else None,
+                slot_id=slot.id,
+                registration_data=data,
+                **guest_kwargs,
+            )
             messages.success(request, 'Запись успешно создана.')
-            return redirect('dashboard')
+            return redirect('dashboard' if request.user.is_authenticated else 'home')
         except RegistrationError as exc:
             messages.error(request, str(exc))
     return render(request, 'events/register_slot.html', {'slot': slot, 'form': form})

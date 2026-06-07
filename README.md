@@ -39,6 +39,25 @@
 В админ-панели появился справочник `Кабинеты`: этаж, номер, количество мест, активность.
 При создании слота встречи учителем кабинет обязателен.
 
+## Email / SMTP
+
+Django уже содержит SMTP-backend, отдельный пакет для отправки писем не нужен. Для реальной отправки задайте переменные окружения:
+
+```powershell
+$env:EMAIL_HOST = "smtp.example.com"
+$env:EMAIL_PORT = "587"
+$env:EMAIL_HOST_USER = "user@example.com"
+$env:EMAIL_HOST_PASSWORD = "password"
+$env:EMAIL_USE_TLS = "true"
+$env:DEFAULT_FROM_EMAIL = "noreply@example.com"
+```
+
+Для локальной разработки можно вернуть вывод писем в консоль:
+
+```powershell
+$env:EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+```
+
 ## Основные API
 
 - `POST /api/auth/register/` - открытая регистрация пользователя.

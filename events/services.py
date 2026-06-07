@@ -5,7 +5,7 @@ from django.utils import timezone
 from django.conf import settings
 from notifications_app.models import Notification
 
-from .models import Event, Registration, Slot
+from .models import Event, Registration, SecuritySettings, Slot
 
 
 class RegistrationError(ValueError):
@@ -25,19 +25,51 @@ def validate_registration_payload(slot, registration_data):
         raise RegistrationError('Заполните обязательные поля: ' + ', '.join(missing))
 
 
+def validate_guest_registration_payload(*, guest_full_name='', guest_email='', guest_school_class=None):
+    missing = []
+    if not str(guest_full_name).strip():
+        missing.append('ФИО школьника')
+    if not str(guest_email).strip():
+        missing.append('Email')
+    if guest_school_class is None:
+        missing.append('Класс')
+    if missing:
+        raise RegistrationError('Заполните обязательные поля: ' + ', '.join(missing))
+
+
 @transaction.atomic
-def create_registration(*, user, slot_id, registration_data=None):
+def create_registration(*, user, slot_id, registration_data=None, guest_full_name='', guest_email='', guest_school_class=None):
     registration_data = registration_data or {}
     slot = Slot.objects.select_for_update().select_related('event').get(pk=slot_id)
     if not slot.is_available:
         raise RegistrationError('В выбранном слоте нет свободных мест или он недоступен.')
-    if Registration.objects.filter(slot=slot, user=user, status=Registration.Status.REGISTERED).exists():
+    if user is None:
+        if not SecuritySettings.guest_students_allowed():
+            raise RegistrationError('Запись без регистрации отключена.')
+        validate_guest_registration_payload(
+            guest_full_name=guest_full_name,
+            guest_email=guest_email,
+            guest_school_class=guest_school_class,
+        )
+        if Registration.objects.filter(
+            slot=slot,
+            guest_email__iexact=guest_email,
+            status=Registration.Status.REGISTERED,
+        ).exists():
+            raise RegistrationError('Вы уже записаны на этот слот.')
+    elif Registration.objects.filter(slot=slot, user=user, status=Registration.Status.REGISTERED).exists():
         raise RegistrationError('Вы уже записаны на этот слот.')
+    participant_class = user.school_class if user is not None else guest_school_class
+    if slot.available_classes.exists() and participant_class not in slot.available_classes.all():
+        raise RegistrationError('Этот слот недоступен для выбранного класса.')
     validate_registration_payload(slot, registration_data)
 
     registration = Registration.objects.create(
         slot=slot,
         user=user,
+        guest_full_name=str(guest_full_name).strip(),
+        guest_email=str(guest_email).strip(),
+        guest_school_class=guest_school_class,
         registration_data=registration_data,
         status=Registration.Status.REGISTERED,
     )
@@ -45,7 +77,7 @@ def create_registration(*, user, slot_id, registration_data=None):
     if slot.current_participants >= slot.max_participants:
         slot.status = Slot.Status.CLOSED
     slot.save(update_fields=['current_participants', 'status'])
-    send_registration_notification(registration, Notification.Type.CONFIRMATION)
+    transaction.on_commit(lambda: send_registration_notification(registration, Notification.Type.CONFIRMATION))
     return registration
 
 
@@ -74,14 +106,14 @@ def mark_attendance(registration, attended):
 def send_registration_notification(registration, notification_type):
     subject = f'Регистрация: {registration.slot.event.title}'
     message = (
-        f'Здравствуйте, {registration.user.full_name}!\n\n'
+        f'Здравствуйте, {registration.participant_full_name}!\n\n'
         f'Ваша запись на "{registration.slot.event.title}" подтверждена.\n'
         f'Дата и время: {registration.slot.start_time:%d.%m.%Y %H:%M}.\n'
         f'Кабинет: {registration.slot.classroom or "не указан"}.\n'
     )
     status = Notification.Status.SENT
     try:
-        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [registration.user.email], fail_silently=False)
+        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [registration.participant_email], fail_silently=False)
     except Exception as exc:
         status = Notification.Status.FAILED
         message = f'{message}\nОшибка отправки: {exc}'
@@ -101,7 +133,7 @@ def notify_slot_change(slot, *, subject, message):
     )
     for registration in registrations:
         full_message = (
-            f'Здравствуйте, {registration.user.full_name}!\n\n'
+            f'Здравствуйте, {registration.participant_full_name}!\n\n'
             f'{message}\n\n'
             f'Мероприятие: {slot.event.title}\n'
             f'Дата и время: {slot.start_time:%d.%m.%Y %H:%M}\n'
@@ -109,7 +141,7 @@ def notify_slot_change(slot, *, subject, message):
         )
         status = Notification.Status.SENT
         try:
-            send_mail(subject, full_message, settings.DEFAULT_FROM_EMAIL, [registration.user.email], fail_silently=False)
+            send_mail(subject, full_message, settings.DEFAULT_FROM_EMAIL, [registration.participant_email], fail_silently=False)
         except Exception as exc:
             status = Notification.Status.FAILED
             full_message = f'{full_message}\nОшибка отправки: {exc}'

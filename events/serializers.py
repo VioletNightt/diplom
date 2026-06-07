@@ -91,16 +91,41 @@ class SlotSerializer(serializers.ModelSerializer):
 class RegistrationSerializer(serializers.ModelSerializer):
     user = UserSummarySerializer(read_only=True)
     slot_detail = SlotSerializer(source='slot', read_only=True)
+    participant_full_name = serializers.CharField(read_only=True)
+    participant_email = serializers.CharField(read_only=True)
+    participant_school_class = SchoolClassSerializer(read_only=True)
 
     class Meta:
         model = Registration
-        fields = ['id', 'slot', 'slot_detail', 'user', 'registration_data', 'status', 'registered_at', 'attended_at']
+        fields = [
+            'id',
+            'slot',
+            'slot_detail',
+            'user',
+            'guest_full_name',
+            'guest_email',
+            'guest_school_class',
+            'participant_full_name',
+            'participant_email',
+            'participant_school_class',
+            'registration_data',
+            'status',
+            'registered_at',
+            'attended_at',
+        ]
         read_only_fields = ['user', 'status', 'registered_at', 'attended_at']
 
 
 class RegistrationCreateSerializer(serializers.Serializer):
     slot = serializers.IntegerField()
     registration_data = serializers.JSONField(required=False)
+    guest_full_name = serializers.CharField(required=False, allow_blank=True)
+    guest_email = serializers.EmailField(required=False, allow_blank=True)
+    guest_school_class = serializers.PrimaryKeyRelatedField(
+        queryset=SchoolClass.objects.filter(is_active=True),
+        required=False,
+        allow_null=True,
+    )
 
 
 class AttendanceSerializer(serializers.Serializer):

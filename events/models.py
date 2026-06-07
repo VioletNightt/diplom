@@ -67,6 +67,34 @@ class SchoolClass(models.Model):
         return self.name
 
 
+class SecuritySettings(models.Model):
+    allow_guest_students = models.BooleanField(_('Разрешить запись школьников без регистрации'), default=True)
+    updated_at = models.DateTimeField(_('Обновлено'), auto_now=True)
+
+    class Meta:
+        verbose_name = _('Настройки безопасности')
+        verbose_name_plural = _('Настройки безопасности')
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        return None
+
+    def __str__(self):
+        return str(_('Настройки безопасности'))
+
+    @classmethod
+    def load(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    @classmethod
+    def guest_students_allowed(cls):
+        return cls.load().allow_guest_students
+
+
 class Classroom(models.Model):
     floor = models.PositiveSmallIntegerField(_('Этаж'))
     number = models.CharField(_('Номер кабинета'), max_length=20)
@@ -178,7 +206,18 @@ class Registration(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='registrations',
-        verbose_name=_('Пользователь'),
+        null=True,
+        blank=True,
+    )
+    guest_full_name = models.CharField(_('ФИО незарегистрированного школьника'), max_length=255, blank=True)
+    guest_email = models.EmailField(_('Email незарегистрированного школьника'), blank=True)
+    guest_school_class = models.ForeignKey(
+        SchoolClass,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='guest_registrations',
+        verbose_name=_('Класс незарегистрированного школьника'),
     )
     registration_data = models.JSONField(_('Дополнительные данные'), default=dict, blank=True)
     status = models.CharField(_('Статус'), max_length=20, choices=Status.choices, default=Status.REGISTERED)
@@ -190,12 +229,13 @@ class Registration(models.Model):
         indexes = [
             models.Index(fields=['slot', 'status']),
             models.Index(fields=['user', 'status']),
+            models.Index(fields=['guest_email', 'status']),
             models.Index(fields=['registered_at']),
         ]
         constraints = [
             models.UniqueConstraint(
                 fields=['slot', 'user'],
-                condition=models.Q(status='registered'),
+                condition=models.Q(status='registered', user__isnull=False),
                 name='unique_active_registration_per_slot_user',
             )
         ]
@@ -203,4 +243,20 @@ class Registration(models.Model):
         verbose_name_plural = _('Регистрации')
 
     def __str__(self):
-        return f'{self.user.full_name} -> {self.slot}'
+        return f'{self.participant_full_name} -> {self.slot}'
+
+    @property
+    def participant_full_name(self):
+        return self.user.full_name if self.user_id else self.guest_full_name
+
+    @property
+    def participant_email(self):
+        return self.user.email if self.user_id else self.guest_email
+
+    @property
+    def participant_phone(self):
+        return self.user.phone if self.user_id else ''
+
+    @property
+    def participant_school_class(self):
+        return self.user.school_class if self.user_id else self.guest_school_class
