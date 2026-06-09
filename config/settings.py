@@ -6,9 +6,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'django-insecure-1s*qpvg7kx1pp_xi_xca=b65tshw(3@6ldyst=o$6t3n_(g$j$'
 
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver', 'nikaeventreg.pythonanywhere.com']
 
 
 
